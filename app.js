@@ -60,6 +60,18 @@ function parseWKT(wkt) {
     return { type: "LINESTRING", coords };
   }
 
+  if (wkt.startsWith("POLYGON")) {
+    const coords = wkt
+      .replace("POLYGON ((", "")
+      .replace("))", "")
+      .split(",")
+      .map(p => {
+        const [lng, lat] = p.trim().split(" ").map(Number);
+        return [lat, lng];
+      });
+    return { type: "POLYGON", coords };
+  }
+
   return null;
 }
 
@@ -88,9 +100,19 @@ Papa.parse("datos.csv", {
         layer = L.marker(geom.coords, { icon: iconoPunto })
           .bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
       }
+
       if (geom.type === "LINESTRING") {
         layer = L.polyline(geom.coords, { color: "#1f21b4ff", weight: 4 })
           .bindPopup(`<b>${row.Nombre || ""}</b>`);
+      }
+
+      if (geom.type === "POLYGON") {
+        layer = L.polygon(geom.coords, {
+          color: "#ff9900",      // borde
+          fillColor: "#ffcc66",  // relleno
+          fillOpacity: 0.5,
+          weight: 2
+        }).bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
       }
 
       if (layer) {
@@ -123,7 +145,6 @@ function construirLista() {
     Object.keys(capas).forEach(apartado => {
       Object.keys(capas[apartado]).forEach(bloque => {
         const grupo = capas[apartado][bloque];
-
         const divItem = Array.from(lista.querySelectorAll(".item")).find(
           d => d.querySelector("span").textContent === bloque
         );
@@ -152,6 +173,7 @@ function construirLista() {
 
     const hApartado = document.createElement("h4");
     hApartado.textContent = apartado;
+    hApartado.style.color = "#4B0082"; // Color de texto del apartado
     divApartado.appendChild(hApartado);
 
     // Botón apagar/encender todo del apartado
@@ -200,6 +222,7 @@ function construirLista() {
       label.textContent = bloque;
       label.style.cursor = "pointer";
       label.style.fontWeight = "bold";
+      label.style.color = "#1f21b4"; // Color de los bloques (azul)
 
       label.addEventListener("click", () => {
         const grupo = capas[apartado][bloque];
@@ -228,25 +251,3 @@ function zoomAutomatico() {
   const grupo = L.featureGroup(capasGlobales);
   map.fitBounds(grupo.getBounds(), { padding: [30, 30] });
 }
-
-// 🟦 Polígono del municipio de Ixtapaluca
-fetch('./data/poligono_ixtapaluca.json')
-  .then(res => res.json())
-  .then(geojson => {
-
-    const poligonoIxtapaluca = L.geoJSON(geojson, {
-      style: {
-        color: '#9D2449',      // borde
-        weight: 3,
-        fillColor: '#9D2449', // relleno
-        fillOpacity: 0.18
-      }
-    }).addTo(map);
-
-    // Enviar el polígono al fondo
-    poligonoIxtapaluca.bringToBack();
-
-    // Ajustar vista al polígono
-    map.fitBounds(poligonoIxtapaluca.getBounds());
-  })
-  .catch(err => console.error('Error cargando poligono_ixtapaluca.geojson:', err));
