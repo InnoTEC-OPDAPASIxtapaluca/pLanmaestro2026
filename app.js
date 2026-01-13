@@ -252,7 +252,7 @@ function zoomAutomatico() {
   map.fitBounds(grupo.getBounds(), { padding: [30, 30] });
 }
 // Polígono del municipio
-fetch('./data/poligono_ixtapaluca.json')
+fetch('./datos/poligono_ixtapaluca.json')
   .then(res => res.json())
   .then(geojson => {
     const poligonoIxtapaluca = L.geoJSON(geojson, {
