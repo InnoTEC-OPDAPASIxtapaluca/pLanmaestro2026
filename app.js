@@ -75,6 +75,33 @@ function parseWKT(wkt) {
 }
 
 // ============================
+// POLÍGONO DEL MUNICIPIO (FONDO)
+// ============================
+fetch('./data/poligono_ixtapaluca.json')
+  .then(res => res.json())
+  .then(geojson => {
+    const poligonoIxtapaluca = L.geoJSON(geojson, {
+      style: {
+        color: '#9D2449',
+        weight: 3,
+        fillColor: '#9D2449',
+        fillOpacity: 0.1
+      }
+    }).addTo(map);
+
+    // Polígono al fondo
+    poligonoIxtapaluca.bringToBack();
+
+    // Ajustar vista al polígono
+    map.fitBounds(poligonoIxtapaluca.getBounds());
+  })
+  .catch(err => console.error('Error cargando poligono_ixtapaluca.geojson:', err))
+  .finally(() => {
+    // Cargar CSV SIEMPRE después
+    cargarCSV();
+  });
+
+// ============================
 // CARGA CSV
 // ============================
 function cargarCSV() {
@@ -122,12 +149,11 @@ function cargarCSV() {
 }
 
 // ============================
-// CONSTRUIR LISTA CON APARTADOS Y BLOQUES
+// CONSTRUIR LISTA
 // ============================
 function construirLista() {
   lista.innerHTML = "";
 
-  // Botón general arriba
   const btnGeneral = document.createElement("button");
   btnGeneral.textContent = "Apagar todo el mapa";
   btnGeneral.style.margin = "10px";
@@ -160,7 +186,6 @@ function construirLista() {
     btnGeneral.textContent = apagar ? "Encender todo el mapa" : "Apagar todo el mapa";
   });
 
-  // Crear los apartados
   Object.keys(capas).forEach(apartado => {
     const divApartado = document.createElement("div");
     divApartado.className = "bloque";
@@ -169,13 +194,11 @@ function construirLista() {
     hApartado.textContent = apartado;
     divApartado.appendChild(hApartado);
 
-    // Botón apagar/encender todo del apartado
     const btnApartado = document.createElement("button");
     btnApartado.textContent = "Apagar todo";
     btnApartado.style.margin = "5px";
     btnApartado.style.cursor = "pointer";
     divApartado.appendChild(btnApartado);
-
     controlesApartados[apartado] = btnApartado;
 
     btnApartado.addEventListener("click", () => {
@@ -197,7 +220,6 @@ function construirLista() {
       btnApartado.textContent = apagar ? "Encender todo" : "Apagar todo";
     });
 
-    // Bloques individuales
     Object.keys(capas[apartado]).forEach(bloque => {
       const divBloque = document.createElement("div");
       divBloque.className = "item";
@@ -241,26 +263,3 @@ function zoomAutomatico() {
   const grupo = L.featureGroup(capasGlobales);
   map.fitBounds(grupo.getBounds(), { padding: [30, 30] });
 }
-
-// ============================
-// POLÍGONO DEL MUNICIPIO (FONDO)
-// ============================
-fetch('./data/poligono_ixtapaluca.json')
-  .then(res => res.json())
-  .then(geojson => {
-    const poligonoIxtapaluca = L.geoJSON(geojson, {
-      style: {
-        color: '#9D2449',       // borde
-        weight: 3,
-        fillColor: '#9D2449',   // relleno
-        fillOpacity: 0.1        // muy transparente
-      }
-    }).addTo(map);
-
-    // Enviar al fondo
-    poligonoIxtapaluca.bringToBack();
-
-    // Cargar CSV DESPUÉS para que los proyectos estén arriba
-    cargarCSV();
-  })
-  .catch(err => console.error('Error cargando poligono_ixtapaluca.geojson:', err));
