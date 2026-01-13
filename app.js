@@ -22,8 +22,8 @@ const iconoPunto = L.icon({
 // CONTENEDORES GLOBALES
 // ============================
 const lista = document.getElementById("lista");
-const capas = {};              // Apartado -> Bloque -> LayerGroup
-const capasGlobales = [];      // Todos los layers individuales
+const capas = {};           // Apartado -> Bloque -> LayerGroup
+const capasGlobales = [];   // Todos los layers individuales
 const controlesApartados = {}; // Botones de cada apartado
 
 // ============================
@@ -32,6 +32,7 @@ const controlesApartados = {}; // Botones de cada apartado
 window.togglePanel = function () {
   const panel = document.getElementById("panel");
   const btn = document.querySelector(".btn-panel");
+
   const oculto = panel.classList.toggle("oculto");
   btn.style.left = oculto ? "0px" : "320px";
 };
@@ -75,85 +76,63 @@ function parseWKT(wkt) {
 }
 
 // ============================
-// POLÍGONO DEL MUNICIPIO (FONDO)
-// ============================
-fetch('./data/poligono_ixtapaluca.json')
-  .then(res => res.json())
-  .then(geojson => {
-    const poligonoIxtapaluca = L.geoJSON(geojson, {
-      style: {
-        color: '#9D2449',
-        weight: 3,
-        fillColor: '#9D2449',
-        fillOpacity: 0.1
-      }
-    }).addTo(map);
-
-    // Polígono al fondo
-    poligonoIxtapaluca.bringToBack();
-
-    // Ajustar vista al polígono
-    map.fitBounds(poligonoIxtapaluca.getBounds());
-  })
-  .catch(err => console.error('Error cargando poligono_ixtapaluca.geojson:', err))
-  .finally(() => {
-    // Cargar CSV SIEMPRE después
-    cargarCSV();
-  });
-
-// ============================
 // CARGA CSV
 // ============================
-function cargarCSV() {
-  Papa.parse("datos.csv", {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: function (results) {
-      results.data.forEach(row => {
-        const wkt = row.WKT?.trim();
-        const apartado = row.Apartado?.trim() || "Otros";
-        const bloque = row.Bloque?.trim() || "Sin bloque";
+Papa.parse("datos.csv", {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: function (results) {
+    results.data.forEach(row => {
+      const wkt = row.WKT?.trim();
+      const apartado = row.Apartado?.trim() || "Otros";
+      const bloque = row.Bloque?.trim() || "Sin bloque";
 
-        if (!wkt) return;
-        const geom = parseWKT(wkt);
-        if (!geom) return;
+      if (!wkt) return;
+      const geom = parseWKT(wkt);
+      if (!geom) return;
 
-        if (!capas[apartado]) capas[apartado] = {};
-        if (!capas[apartado][bloque]) capas[apartado][bloque] = L.layerGroup().addTo(map);
+      if (!capas[apartado]) capas[apartado] = {};
+      if (!capas[apartado][bloque]) capas[apartado][bloque] = L.layerGroup().addTo(map);
 
-        let layer;
-        if (geom.type === "POINT") {
-          layer = L.marker(geom.coords, { icon: iconoPunto })
-            .bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
-        }
-        if (geom.type === "LINESTRING") {
-          layer = L.polyline(geom.coords, { color: "#1f21b4ff", weight: 4 })
-            .bindPopup(`<b>${row.Nombre || ""}</b>`);
-        }
-        if (geom.type === "POLYGON") {
-          layer = L.polygon(geom.coords, { color: "#e67e22", fillColor: "#e67e22", fillOpacity: 0.4 })
-            .bindPopup(`<b>${row.Nombre || ""}</b>`);
-        }
+      let layer;
+      if (geom.type === "POINT") {
+        layer = L.marker(geom.coords, { icon: iconoPunto })
+          .bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
+      }
 
-        if (layer) {
-          layer.addTo(capas[apartado][bloque]);
-          capasGlobales.push(layer);
-        }
-      });
+      if (geom.type === "LINESTRING") {
+        layer = L.polyline(geom.coords, { color: "#1f21b4ff", weight: 4 })
+          .bindPopup(`<b>${row.Nombre || ""}</b>`);
+      }
 
-      construirLista();
-      zoomAutomatico();
-    }
-  });
-}
+      if (geom.type === "POLYGON") {
+        layer = L.polygon(geom.coords, {
+          color: "#ff9900",      // borde
+          fillColor: "#ffcc66",  // relleno
+          fillOpacity: 0.5,
+          weight: 2
+        }).bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
+      }
+
+      if (layer) {
+        layer.addTo(capas[apartado][bloque]);
+        capasGlobales.push(layer);
+      }
+    });
+
+    construirLista();
+    zoomAutomatico();
+  }
+});
 
 // ============================
-// CONSTRUIR LISTA
+// CONSTRUIR LISTA CON APARTADOS Y BLOQUES
 // ============================
 function construirLista() {
   lista.innerHTML = "";
 
+  // Botón general arriba
   const btnGeneral = document.createElement("button");
   btnGeneral.textContent = "Apagar todo el mapa";
   btnGeneral.style.margin = "10px";
@@ -169,13 +148,14 @@ function construirLista() {
         const divItem = Array.from(lista.querySelectorAll(".item")).find(
           d => d.querySelector("span").textContent === bloque
         );
-        const chk = divItem?.querySelector("input");
+        const chk = divItem.querySelector("input");
+
         if (apagar) {
           map.removeLayer(grupo);
-          if (chk) chk.checked = false;
+          chk.checked = false;
         } else {
           grupo.addTo(map);
-          if (chk) chk.checked = true;
+          chk.checked = true;
         }
       });
 
@@ -186,19 +166,23 @@ function construirLista() {
     btnGeneral.textContent = apagar ? "Encender todo el mapa" : "Apagar todo el mapa";
   });
 
+  // Crear los apartados
   Object.keys(capas).forEach(apartado => {
     const divApartado = document.createElement("div");
     divApartado.className = "bloque";
 
     const hApartado = document.createElement("h4");
     hApartado.textContent = apartado;
+    hApartado.style.color = "#4B0082"; // Color de texto del apartado
     divApartado.appendChild(hApartado);
 
+    // Botón apagar/encender todo del apartado
     const btnApartado = document.createElement("button");
     btnApartado.textContent = "Apagar todo";
     btnApartado.style.margin = "5px";
     btnApartado.style.cursor = "pointer";
     divApartado.appendChild(btnApartado);
+
     controlesApartados[apartado] = btnApartado;
 
     btnApartado.addEventListener("click", () => {
@@ -208,18 +192,20 @@ function construirLista() {
         const divItem = Array.from(divApartado.querySelectorAll(".item")).find(
           d => d.querySelector("span").textContent === bloque
         );
-        const chk = divItem?.querySelector("input");
+        const chk = divItem.querySelector("input");
+
         if (apagar) {
           map.removeLayer(grupo);
-          if (chk) chk.checked = false;
+          chk.checked = false;
         } else {
           grupo.addTo(map);
-          if (chk) chk.checked = true;
+          chk.checked = true;
         }
       });
       btnApartado.textContent = apagar ? "Encender todo" : "Apagar todo";
     });
 
+    // Bloques individuales
     Object.keys(capas[apartado]).forEach(bloque => {
       const divBloque = document.createElement("div");
       divBloque.className = "item";
@@ -236,6 +222,7 @@ function construirLista() {
       label.textContent = bloque;
       label.style.cursor = "pointer";
       label.style.fontWeight = "bold";
+      label.style.color = "#1f21b4"; // Color de los bloques (azul)
 
       label.addEventListener("click", () => {
         const grupo = capas[apartado][bloque];
@@ -243,7 +230,8 @@ function construirLista() {
         grupo.eachLayer(layer => features.push(layer));
         if (!features.length) return;
         const fg = L.featureGroup(features);
-        if (fg.getBounds().isValid()) map.fitBounds(fg.getBounds(), { padding: [40, 40], maxZoom: 17 });
+        const bounds = fg.getBounds();
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
       });
 
       divBloque.appendChild(chk);
