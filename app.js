@@ -108,7 +108,7 @@ Papa.parse("datos.csv", {
 
       if (geom.type === "POLYGON") {
         layer = L.polygon(geom.coords, {
-          color: "#ffcc66",      // borde
+          color: "#000000",      // borde
           fillColor: "#ffcc66",  // relleno
           fillOpacity: 0.5,
           weight: 2
