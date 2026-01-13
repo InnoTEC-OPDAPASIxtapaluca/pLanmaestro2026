@@ -8,6 +8,24 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
 }).addTo(map);
 
+
+// Polígono del municipio
+fetch('./datos/poligono_ixtapaluca.json')
+  .then(res => res.json())
+  .then(geojson => {
+    const poligonoIxtapaluca = L.geoJSON(geojson, {
+      style: {
+        color: '#9D2449',      // borde
+        weight: 3,
+        fillColor: '#9D2449',  // relleno
+        fillOpacity: 0.1       // MUY TRANSPARENTE
+      }
+    }).addTo(map);
+
+    // Enviar al fondo
+    poligonoIxtapaluca.bringToBack();
+  });
+
 // ============================
 // ICONO PUNTOS
 // ============================
@@ -251,19 +269,3 @@ function zoomAutomatico() {
   const grupo = L.featureGroup(capasGlobales);
   map.fitBounds(grupo.getBounds(), { padding: [30, 30] });
 }
-// Polígono del municipio
-fetch('./datos/poligono_ixtapaluca.json')
-  .then(res => res.json())
-  .then(geojson => {
-    const poligonoIxtapaluca = L.geoJSON(geojson, {
-      style: {
-        color: '#9D2449',      // borde
-        weight: 3,
-        fillColor: '#9D2449',  // relleno
-        fillOpacity: 0.1       // MUY TRANSPARENTE
-      }
-    }).addTo(map);
-
-    // Enviar al fondo
-    poligonoIxtapaluca.bringToBack();
-  });
