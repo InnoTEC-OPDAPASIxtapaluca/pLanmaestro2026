@@ -2,46 +2,25 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Mapa interactivo</title>
+  <title>Mapa OPDAPAS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-
-  <!-- CSS -->
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<aside class="panel">
-
-  <!-- FILTROS -->
-  <div id="filtros">
-    <label><input type="checkbox" checked onchange="toggleCapa('POZO')"> Pozos</label>
-    <label><input type="checkbox" checked onchange="toggleCapa('TANQUE')"> Tanques</label>
-    <label><input type="checkbox" checked onchange="toggleCapa('TRAMO')"> Tramos</label>
-  </div>
-
-  <!-- FICHA -->
-  <div id="info-box" class="ficha hidden"></div>
-
-  <!-- LISTA -->
-  <ul id="lista"></ul>
-
-</aside>
-
-<div id="map-container">
-  <div id="map"></div>
-
-  <button id="btn-centro">
-    <img src="./imagenes/logoOPDAPAS.png">
-  </button>
+<div class="panel" id="panel">
+  <h3 class="titulo">Plan Maestro 2026</h3>
+  <div id="lista"></div>
 </div>
 
-<!-- JS -->
+<div id="map"></div>
+
+<button class="btn-panel" onclick="togglePanel()">☰</button>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="app.js"></script>
-
 </body>
 </html>
