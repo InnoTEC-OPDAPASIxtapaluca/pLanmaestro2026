@@ -157,3 +157,4 @@ document.getElementById("btn-centro").onclick = () => {
     map.fitBounds(L.featureGroup(visibles).getBounds());
   }
 };
+L.marker([19.32, -98.88]).addTo(map).bindPopup("PRUEBA");
