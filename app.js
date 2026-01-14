@@ -8,22 +8,33 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
 }).addTo(map);
 
+// ============================
+// PANES (ORDEN DE CAPAS)
+// ============================
+map.createPane("municipioPane");
+map.getPane("municipioPane").style.zIndex = 400;
 
-// Polígono del municipio
-fetch('./datos/poligono_ixtapaluca.json')
+map.createPane("datosPane");     // polígonos y líneas CSV
+map.getPane("datosPane").style.zIndex = 500;
+
+map.createPane("puntosPane");    // puntos siempre arriba
+map.getPane("puntosPane").style.zIndex = 600;
+
+// ============================
+// POLÍGONO DEL MUNICIPIO
+// ============================
+fetch("./datos/poligono_ixtapaluca.json")
   .then(res => res.json())
   .then(geojson => {
-    const poligonoIxtapaluca = L.geoJSON(geojson, {
+    L.geoJSON(geojson, {
+      pane: "municipioPane",
       style: {
-        color: '#9D2449',      // borde
+        color: "#9D2449",
         weight: 3,
-        fillColor: '#9D2449',  // relleno
-        fillOpacity: 0.1       // MUY TRANSPARENTE
+        fillColor: "#9D2449",
+        fillOpacity: 0.1
       }
     }).addTo(map);
-
-    // Enviar al fondo
-    poligonoIxtapaluca.bringToBack();
   });
 
 // ============================
@@ -40,9 +51,9 @@ const iconoPunto = L.icon({
 // CONTENEDORES GLOBALES
 // ============================
 const lista = document.getElementById("lista");
-const capas = {};           // Apartado -> Bloque -> LayerGroup
-const capasGlobales = [];   // Todos los layers individuales
-const controlesApartados = {}; // Botones de cada apartado
+const capas = {};                 // Apartado -> Bloque -> LayerGroup
+const capasGlobales = [];
+const controlesApartados = {};
 
 // ============================
 // TOGGLE PANEL
@@ -101,6 +112,7 @@ Papa.parse("datos.csv", {
   header: true,
   skipEmptyLines: true,
   complete: function (results) {
+
     results.data.forEach(row => {
       const wkt = row.WKT?.trim();
       const apartado = row.Apartado?.trim() || "Otros";
@@ -114,20 +126,30 @@ Papa.parse("datos.csv", {
       if (!capas[apartado][bloque]) capas[apartado][bloque] = L.layerGroup().addTo(map);
 
       let layer;
+
+      // ---------- PUNTOS ----------
       if (geom.type === "POINT") {
-        layer = L.marker(geom.coords, { icon: iconoPunto })
-          .bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
+        layer = L.marker(geom.coords, {
+          icon: iconoPunto,
+          pane: "puntosPane"
+        }).bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
       }
 
+      // ---------- LÍNEAS ----------
       if (geom.type === "LINESTRING") {
-        layer = L.polyline(geom.coords, { color: "#1f21b4ff", weight: 4 })
-          .bindPopup(`<b>${row.Nombre || ""}</b>`);
+        layer = L.polyline(geom.coords, {
+          pane: "datosPane",
+          color: "#1f21b4",
+          weight: 4
+        }).bindPopup(`<b>${row.Nombre || ""}</b>`);
       }
 
+      // ---------- POLÍGONOS ----------
       if (geom.type === "POLYGON") {
         layer = L.polygon(geom.coords, {
-          color: "#ff9900",      // borde
-          fillColor: "#ffcc66",  // relleno
+          pane: "datosPane",
+          color: "#ff9900",
+          fillColor: "#ffcc66",
           fillOpacity: 0.5,
           weight: 2
         }).bindPopup(`<b>${row.Nombre || ""}</b><br>${row.Descripción || ""}`);
@@ -145,16 +167,14 @@ Papa.parse("datos.csv", {
 });
 
 // ============================
-// CONSTRUIR LISTA CON APARTADOS Y BLOQUES
+// CONSTRUIR LISTA
 // ============================
 function construirLista() {
   lista.innerHTML = "";
 
-  // Botón general arriba
   const btnGeneral = document.createElement("button");
   btnGeneral.textContent = "Apagar todo el mapa";
   btnGeneral.style.margin = "10px";
-  btnGeneral.style.cursor = "pointer";
   lista.appendChild(btnGeneral);
 
   btnGeneral.addEventListener("click", () => {
@@ -163,18 +183,7 @@ function construirLista() {
     Object.keys(capas).forEach(apartado => {
       Object.keys(capas[apartado]).forEach(bloque => {
         const grupo = capas[apartado][bloque];
-        const divItem = Array.from(lista.querySelectorAll(".item")).find(
-          d => d.querySelector("span").textContent === bloque
-        );
-        const chk = divItem.querySelector("input");
-
-        if (apagar) {
-          map.removeLayer(grupo);
-          chk.checked = false;
-        } else {
-          grupo.addTo(map);
-          chk.checked = true;
-        }
+        apagar ? map.removeLayer(grupo) : grupo.addTo(map);
       });
 
       const btnApartado = controlesApartados[apartado];
@@ -184,77 +193,40 @@ function construirLista() {
     btnGeneral.textContent = apagar ? "Encender todo el mapa" : "Apagar todo el mapa";
   });
 
-  // Crear los apartados
   Object.keys(capas).forEach(apartado => {
     const divApartado = document.createElement("div");
     divApartado.className = "bloque";
 
-    const hApartado = document.createElement("h4");
-    hApartado.textContent = apartado;
-    hApartado.style.color = "#4B0082"; // Color de texto del apartado
-    divApartado.appendChild(hApartado);
+    const h = document.createElement("h4");
+    h.textContent = apartado;
+    divApartado.appendChild(h);
 
-    // Botón apagar/encender todo del apartado
-    const btnApartado = document.createElement("button");
-    btnApartado.textContent = "Apagar todo";
-    btnApartado.style.margin = "5px";
-    btnApartado.style.cursor = "pointer";
-    divApartado.appendChild(btnApartado);
-
-    controlesApartados[apartado] = btnApartado;
-
-    btnApartado.addEventListener("click", () => {
-      const apagar = btnApartado.textContent === "Apagar todo";
-      Object.keys(capas[apartado]).forEach(bloque => {
-        const grupo = capas[apartado][bloque];
-        const divItem = Array.from(divApartado.querySelectorAll(".item")).find(
-          d => d.querySelector("span").textContent === bloque
-        );
-        const chk = divItem.querySelector("input");
-
-        if (apagar) {
-          map.removeLayer(grupo);
-          chk.checked = false;
-        } else {
-          grupo.addTo(map);
-          chk.checked = true;
-        }
-      });
-      btnApartado.textContent = apagar ? "Encender todo" : "Apagar todo";
-    });
-
-    // Bloques individuales
     Object.keys(capas[apartado]).forEach(bloque => {
-      const divBloque = document.createElement("div");
-      divBloque.className = "item";
+      const div = document.createElement("div");
+      div.className = "item";
 
       const chk = document.createElement("input");
       chk.type = "checkbox";
       chk.checked = true;
-      chk.addEventListener("change", () => {
-        const grupo = capas[apartado][bloque];
-        chk.checked ? grupo.addTo(map) : map.removeLayer(grupo);
-      });
+      chk.onchange = () => {
+        chk.checked
+          ? capas[apartado][bloque].addTo(map)
+          : map.removeLayer(capas[apartado][bloque]);
+      };
 
       const label = document.createElement("span");
       label.textContent = bloque;
-      label.style.cursor = "pointer";
-      label.style.fontWeight = "bold";
-      label.style.color = "#1f21b4"; // Color de los bloques (azul)
+      label.onclick = () => {
+        const fg = L.featureGroup();
+        capas[apartado][bloque].eachLayer(l => fg.addLayer(l));
+        if (fg.getBounds().isValid()) {
+          map.fitBounds(fg.getBounds(), { padding: [40, 40], maxZoom: 17 });
+        }
+      };
 
-      label.addEventListener("click", () => {
-        const grupo = capas[apartado][bloque];
-        const features = [];
-        grupo.eachLayer(layer => features.push(layer));
-        if (!features.length) return;
-        const fg = L.featureGroup(features);
-        const bounds = fg.getBounds();
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
-      });
-
-      divBloque.appendChild(chk);
-      divBloque.appendChild(label);
-      divApartado.appendChild(divBloque);
+      div.appendChild(chk);
+      div.appendChild(label);
+      divApartado.appendChild(div);
     });
 
     lista.appendChild(divApartado);
@@ -262,10 +234,10 @@ function construirLista() {
 }
 
 // ============================
-// ZOOM AUTOMÁTICO AL CARGAR
+// ZOOM AUTOMÁTICO
 // ============================
 function zoomAutomatico() {
   if (!capasGlobales.length) return;
-  const grupo = L.featureGroup(capasGlobales);
-  map.fitBounds(grupo.getBounds(), { padding: [30, 30] });
+  const fg = L.featureGroup(capasGlobales);
+  map.fitBounds(fg.getBounds(), { padding: [30, 30] });
 }
