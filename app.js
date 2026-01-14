@@ -32,7 +32,7 @@ fetch("./datos/poligono_ixtapaluca.json")
         color: "#9D2449",
         weight: 3,
         fillColor: "#9D2449",
-        fillOpacity: 0.1
+        fillOpacity: 0.5
       }
     }).addTo(map);
   });
